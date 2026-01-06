@@ -9,6 +9,9 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+from cs336_basics.BPETokenizer import BPETokenizer
+
+from cs336_basics.PreTokenizer import PreTokenizer
 
 def run_linear(
     d_in: int,
@@ -559,7 +562,7 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
-    raise NotImplementedError
+    return BPETokenizer(vocab, merges, special_tokens)
 
 
 def run_train_bpe(
@@ -589,4 +592,74 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    raise NotImplementedError
+    special_tokens_bytes = [t.encode("utf-8") for t in special_tokens]
+
+    trainer = PreTokenizer(special_tokens_bytes)
+
+    vocab, merges = trainer.train_bpe(
+        input_path=input_path,
+        vocab_size=vocab_size,
+    )
+
+    return vocab, merges
+
+
+def run_train_bpe2(
+    input_path: str | os.PathLike,
+    vocab_size: int,
+    special_tokens: list[str],
+    **kwargs,
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    """Given the path to an input corpus, run train a BPE tokenizer and
+    output its vocabulary and merges.
+
+    Args:
+        input_path (str | os.PathLike): Path to BPE tokenizer training data.
+        vocab_size (int): Total number of items in the tokenizer's vocabulary (including special tokens).
+        special_tokens (list[str]): A list of string special tokens to be added to the tokenizer vocabulary.
+            These strings will never be split into multiple tokens, and will always be
+            kept as a single token. If these special tokens occur in the `input_path`,
+            they are treated as any other string.
+
+    Returns:
+        tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+            vocab:
+                The trained tokenizer vocabulary, a mapping from int (token ID in the vocabulary)
+                to bytes (token bytes)
+            merges:
+                BPE merges. Each list item is a tuple of bytes (<token1>, <token2>),
+                representing that <token1> was merged with <token2>.
+                Merges are ordered by order of creation.
+    """
+
+    special_tokens_bytes = [token.encode('utf-8') for token in special_tokens]
+    pre_tokenizer = PreTokenizer(num_processes=10, special_tokens=special_tokens_bytes)
+    
+    all_chunks, pair_counts = pre_tokenizer.pre_tokenize(input_path)
+
+    num_merges = vocab_size - 256 - len(special_tokens)
+
+    merge_list = pre_tokenizer.train_bpe(all_chunks, pair_counts, num_merges)
+
+        # Build the vocabulary
+    vocab = {}
+    
+    # Add base byte tokens (0-255)
+    for i in range(256):
+        vocab[i] = bytes([i])
+
+     # Add merged tokens (256 to 256+num_merges-1)
+    for merged_pair, token_id in merge_list:
+        vocab[token_id] = merged_pair[0] + merged_pair[1]
+
+    # Add special tokens (start after merged tokens)
+    next_id = 256 + num_merges
+    for special_token_bytes in special_tokens_bytes:
+        vocab[next_id] = special_token_bytes
+        next_id += 1
+    
+    # Convert merges to the required format
+    merges = [merged_pair for merged_pair, _ in merge_list]
+    
+    return vocab, merges
+    
