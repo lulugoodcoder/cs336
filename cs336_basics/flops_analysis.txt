@@ -1,0 +1,89 @@
+(a) Consider GPT-2 XL, which has the following configuration:
+vocab_size : 50,257
+context_length : 1,024
+num_layers : 48
+d_model : 1,600
+num_heads : 25
+d_ff : 6,400
+Suppose we constructed our model using this configuration. How many trainable parameters
+would our model have? Assuming each parameter is represented using single-precision floating
+point, how much memory is required to just load this model?
+Deliverable: A one-to-two sentence response
+
+TansformerLM:
+├── Embedding: vocab_size × d_model
+├── 48 × TransformerBlock:
+│   ├── Norm1: d_model
+│   ├── Attention:
+│   │   ├── W_Q: d_model × d_model
+│   │   ├── W_K: d_model × d_model
+│   │   ├── W_V: d_model × d_model
+│   │   └── W_O: d_model × d_model
+│   ├── Norm2: d_model
+│   └── SwiGLU:
+│       ├── weight1: d_model × d_ff
+│       ├── weight2: d_ff × d_model
+│       └── weight3: d_model × d_ff
+├── Final Norm: d_model
+└── LM Head (Linear): d_model × vocab_size
+
+
+ 
+(b) Identify the matrix multiplies required to complete a forward pass of our GPT-2 XL-shaped
+model. How many FLOPs do these matrix multiplies require in total? Assume that our input
+sequence has context_length tokens.
+Deliverable: A list of matrix multiplies (with descriptions), and the total number of FLOPs
+required.
+
+1. Embedding Lookup
+2. Transformer Block
+
+Q 投影(T, d) @ (d, d)2 × T × d × d
+K 投影(T, d) @ (d, d)2 × T × d × d
+V 投影(T, d) @ (d, d)2 × T × d × d
+QK^T(T, d) @ (d, T)2 × T × d × T = 2 × T² × d
+Attention × V(T, T) @ (T, d)2 × T × T × d = 2 × T² × d
+Output 投影(T, d) @ (d, d)2 × T × d × d
+SwiGLU w1(T, d) @ (d, d_ff)2 × T × d × d_ff
+SwiGLU w3(T, d) @ (d, d_ff)2 × T × d × d_ff
+SwiGLU w2(T, d_ff) @ (d_ff, d)2 × T × d_ff × d
+Linear(T, d) @ (d, vocab)2 × T × d × vocab
+
+每层 Attention 投影:  4 × (2 × T × d²) = 8 × T × d²
+每层 QK^T + Attn×V:   2 × (2 × T² × d) = 4 × T² × d
+每层 SwiGLU:          3 × (2 × T × d × d_ff) = 6 × T × d × d_ff
+
+每层总计: 8Td² + 4T²d + 6Td·d_ff
+3. LM Head
+操作矩阵形状FLOPsLinear(T, d) @ (d, vocab)2 × T × d × vocab
+
+
+(c) Based on your analysis above, which parts of the model require the most FLOPs?
+Deliverable: A one-to-two sentence response.
+swiGLU
+
+
+(d) Repeat your analysis with GPT-2 small (12 layers, 768 d_model, 12 heads), GPT-2 medium (24
+layers, 1024 d_model, 16 heads), and GPT-2 large (36 layers, 1280 d_model, 20 heads). As the
+model size increases, which parts of the Transformer LM take up proportionally more or less of
+the total FLOPs?
+Deliverable: For each model, provide a breakdown of model components and its associated
+FLOPs (as a proportion of the total FLOPs required for a forward pass). In addition, provide a
+one-to-two sentence description of how varying the model size changes the proportional FLOPs
+of each component.
+
+As the model size increases:
+
+SwiGLU (FFN) 占比从 37.5% 增长到 67.0%，因为其 FLOPs 与 L×d² 成正比
+LM Head 占比从 17.0% 下降到 3.6%，因为它不随层数增长
+Attention scores 占比相对稳定（~5-7%），因为 T 固定时它与 d 线性相关
+
+
+(e) Take GPT-2 XL and increase the context length to 16,384. How does the total FLOPs for one
+forward pass change? How do the relative contribution of FLOPs of the model components
+change?
+Deliverable: A one-to-two sentence response.
+
+When increasing context length from 1,024 to 16,384, total FLOPs increase by ~33× (from 4.5T to 149T). 
+The attention score computation (QK^T and Attention×V) grows from 7% to 55% of total FLOPs due to its O(T²) complexity, 
+while SwiGLU drops from 67% to 32%, explaining why long-context models require optimizations like Flash Attention.
