@@ -33,6 +33,14 @@ from cs336_basics.TansformerBlock import TansformerBlock
 
 from cs336_basics.TansformerLM import TansformerLM
 
+from cs336_basics.CrossEntropy import CrossEntropy
+
+from cs336_basics.AdamW import AdamW
+
+from cs336_basics.LearningRateSchedule import LearningRateSchedule
+
+from cs336_basics.GradientClipping import GradientClipping
+
 def run_linear(
     d_in: int,
     d_out: int,
@@ -562,7 +570,8 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    crossEntropy = CrossEntropy()
+    return crossEntropy(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
@@ -574,14 +583,16 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    gradientClipping = GradientClipping()
+    
+    gradientClipping.gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
@@ -609,7 +620,8 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    learningRateSchedule = LearningRateSchedule()
+    return learningRateSchedule.learning_rate_schedule(it, max_learning_rate, min_learning_rate, warmup_iters, cosine_cycle_iters)
 
 
 def run_save_checkpoint(
