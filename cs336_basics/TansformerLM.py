@@ -26,7 +26,7 @@ class TansformerLM(nn.Module):
     def forward(self, x: torch.Tensor):
         batch_size, seq_len = x.shape
         token_positions = torch.arange(seq_len, device=x.device)
-        # 扩展到 batch 维度: (batch_size, seq_len)
+        #扩展到 batch 维度: (batch_size, seq_len) 
         token_positions = token_positions.unsqueeze(0).expand(batch_size, -1)
 
         hidden  = self.embedding(x)
