@@ -45,6 +45,9 @@ class RotaryPositionalEmbedding(nn.Module):
         cos = self.cos_cached[token_positions]  # Shape: (..., seq_len, d_k/2)
         sin = self.sin_cached[token_positions]  # Shape: (..., seq_len, d_k/2)
         
+        cos = cos.unsqueeze(1)
+        sin = sin.unsqueeze(1)
+
         # Split x into even and odd indices (pairs)
         x_even = x[..., 0::2]  # Shape: (..., seq_len, d_k/2) - indices [0, 2, 4, ...]
         x_odd = x[..., 1::2]   # Shape: (..., seq_len, d_k/2) - indices [1, 3, 5, ...]

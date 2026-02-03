@@ -1,6 +1,8 @@
+import json
 import torch
 import numpy as np
 import argparse
+import time
 from cs336_basics.DataLoader import DataLoader
 from cs336_basics.TansformerLM import TansformerLM
 from cs336_basics.AdamW import AdamW
@@ -89,6 +91,9 @@ class Training:
 
         model.train()
 
+        metrics = {"step": [], "train_loss": [], "val_loss": [], "lr": [], "wallclock": []}
+        start_time = time.time()
+
         for step in range(self.args.max_steps):
             inputs, targets = self.get_batch(training_data) 
 
@@ -114,12 +119,25 @@ class Training:
             optimizer.step()
 
             # Add logging (optional but helpful)
+            # Inside the loop, at logging points:
             if step % self.args.log_interval == 0:
-                print(f"Step {step} | Loss: {loss.item():.4f} | LR: {lr:.6f}")
+                metrics["step"].append(step)
+                metrics["train_loss"].append(loss.item())
+                metrics["lr"].append(lr)
+                metrics["wallclock"].append(time.time() - start_time)
+                print(f"Step {step} | Loss: {loss.item():.4f} | LR: {lr:.6f}") 
 
+            if step % self.args.val_interval == 0:
+                val_loss = self.evaluate(model, validation_data, loss_fn)
+                metrics["val_loss"].append((step, val_loss))
+
+        # At end of training:
+        with open("experiment_log.json", "w") as f:
+            json.dump(metrics, f)
         
-
-
+if __name__ == "__main__":
+    trainer = Training()
+    trainer.train()
 
     
         

@@ -144,8 +144,16 @@ class CausalMultiHeadSelfAttention(nn.Module):
         attn_weights = torch.nan_to_num(attn_weights, nan=0.0)
         attn_output = attn_weights @ V
         
- 
+        # Transpose: (batch, num_heads, seq_len, d_v) -> (batch, seq_len, num_heads, d_v)
+        attn_output = attn_output.transpose(1, 2)
         
+        # Concatenate heads: (batch, seq_len, num_heads * d_v)
+        batch_size = attn_output.shape[0]
+        attn_output = attn_output.contiguous().view(batch_size, seq_len, self.num_heads * self.d_v)
+
+        # Final projection
+        output = attn_output @ self.W_O.T
+
         return output
 
         

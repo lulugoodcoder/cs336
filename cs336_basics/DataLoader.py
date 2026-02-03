@@ -9,8 +9,8 @@ class DataLoader:
         input_value = np.array([dataset[i : i + context_length] for i in input_index])
         output_value = np.array([dataset[i + 1 : i + context_length + 1] for i in input_index])
 
-        inputs = torch.tensor(input_value, device=device)
-        targets = torch.tensor(output_value, device=device)
+        inputs = torch.tensor(input_value, device=device,  dtype=torch.long)
+        targets = torch.tensor(output_value, device=device,  dtype=torch.long)
 
         return inputs, targets
 
